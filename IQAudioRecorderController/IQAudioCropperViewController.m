@@ -23,6 +23,7 @@
 // THE SOFTWARE.
 
 #import "IQAudioCropperViewController.h"
+#import "FDWaveformView.h"
 #import "NSString+IQTimeIntervalFormatter.h"
 #import "IQCropSelectionBeginView.h"
 #import "IQCropSelectionEndView.h"
