@@ -23,11 +23,12 @@
 // THE SOFTWARE.
 
 #import "IQAudioCropperViewController.h"
-#import "FDWaveformView.h"
 #import "NSString+IQTimeIntervalFormatter.h"
 #import "IQCropSelectionBeginView.h"
 #import "IQCropSelectionEndView.h"
 
+@import AVKit;
+@import AVFoundation;
 @import FDWaveformView;
 
 @interface IQAudioCropperViewController ()<FDWaveformViewDelegate,AVAudioPlayerDelegate>
@@ -35,7 +36,7 @@
     //BlurrView
     UIVisualEffectView *visualEffectView;
     BOOL _isFirstTime;
-
+    
     UIView *middleContainerView;
     
     FDWaveformView *waveformView;
@@ -52,17 +53,17 @@
     UIBarButtonItem *_playButton;
     UIBarButtonItem *_pauseButton;
     UIBarButtonItem *_stopPlayButton;
-
+    
     UIBarButtonItem *_cropButton;
     UIBarButtonItem *_cropActivityBarButton;
     UIActivityIndicatorView *_cropActivityIndicatorView;
-
+    
     IQCropSelectionView *leftCropView;
     IQCropSelectionView *rightCropView;
     
     //Playing
     AVAudioPlayer *_audioPlayer;
-//    BOOL _wasPlaying;
+    //    BOOL _wasPlaying;
     CADisplayLink *playProgressDisplayLink;
     
     //Private variables
@@ -89,7 +90,7 @@
         self.originalAudioFilePath = audioFilePath;
         self.currentAudioFilePath = audioFilePath;
     }
-
+    
     return self;
 }
 
@@ -187,9 +188,9 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-
+    
     _isFirstTime = YES;
-
+    
     {
         if (self.title.length == 0)
         {
@@ -233,7 +234,7 @@
         _audioPlayer.delegate = self;
         _audioPlayer.meteringEnabled = YES;
     }
-
+    
     {
         _cancelButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(cancelAction:)];
         self.navigationItem.leftBarButtonItem = _cancelButton;
@@ -244,11 +245,11 @@
     
     {
         NSBundle* bundle = [NSBundle bundleForClass:self.class];
-
+        
         self.navigationController.toolbarHidden = NO;
         
         _flexItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
-
+        
         _stopPlayButton = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"stop_playing" inBundle:bundle compatibleWithTraitCollection:nil] style:UIBarButtonItemStylePlain target:self action:@selector(stopPlayingButtonAction:)];
         _stopPlayButton.enabled = NO;
         _stopPlayButton.tintColor = [self _normalTintColor];
@@ -257,7 +258,7 @@
         
         _pauseButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemPause target:self action:@selector(pauseAction:)];
         _pauseButton.tintColor = [self _normalTintColor];
-
+        
         _cropButton = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"scissor" inBundle:bundle compatibleWithTraitCollection:nil] style:UIBarButtonItemStylePlain target:self action:@selector(cropAction:)];
         _cropButton.tintColor = [self _normalTintColor];
         _cropButton.enabled = NO;
@@ -291,7 +292,7 @@
 -(void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
-
+    
     if (_isFirstTime)
     {
         _isFirstTime = NO;
@@ -330,7 +331,7 @@
     {
         beginPoint = [panRecognizer translationInView:middleContainerView];
         beginCenter = leftCropView.center;
-
+        
         NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:[_stopPlayButton.target methodSignatureForSelector:_stopPlayButton.action]];
         invocation.target = _stopPlayButton.target;
         invocation.selector = _stopPlayButton.action;
@@ -394,7 +395,7 @@
         
         //Left Margin from left cropper
         pointX = MAX(CGRectGetMaxX(leftCropView.frame), pointX);
-
+        
         rightCropView.center = CGPointMake(pointX, beginCenter.y);
         
         {
@@ -465,7 +466,7 @@
     [UIApplication sharedApplication].idleTimerDisabled = _wasIdleTimerDisabled;
     
     [_audioPlayer pause];
-
+    
     //    //UI Update
     {
         [self setToolbarItems:@[_stopPlayButton,_flexItem, _playButton,_flexItem,_cropButton] animated:YES];
@@ -479,7 +480,7 @@
         [self setToolbarItems:@[_stopPlayButton,_flexItem, _playButton,_flexItem,_cropButton] animated:YES];
         _stopPlayButton.enabled = NO;
         _cancelButton.enabled = YES;
-
+        
         if ([self.originalAudioFilePath isEqualToString:self.currentAudioFilePath])
         {
             _doneButton.enabled = NO;
@@ -503,14 +504,14 @@
         [playProgressDisplayLink invalidate];
         playProgressDisplayLink = nil;
     }
-
+    
     [_audioPlayer stop];
     
     {
         _audioPlayer.currentTime = leftCropView.cropTime;
         waveformView.progressSamples = waveformView.totalSamples*(_audioPlayer.currentTime/_audioPlayer.duration);
     }
-
+    
     [[AVAudioSession sharedInstance] setCategory:_oldSessionCategory error:nil];
     [UIApplication sharedApplication].idleTimerDisabled = _wasIdleTimerDisabled;
 }
@@ -528,14 +529,14 @@
         _doneButton.enabled = NO;
         self.view.userInteractionEnabled = NO;
     }
-
+    
     [[NSOperationQueue new] addOperationWithBlock:^{
-
-//        [NSThread sleepForTimeInterval:5];
+        
+        //        [NSThread sleepForTimeInterval:5];
         
         {
             NSURL *audioURL = [NSURL fileURLWithPath:self.currentAudioFilePath];
-
+            
             AVAsset *asset = [AVAsset assetWithURL:audioURL];
             
             // get the first audio track
@@ -551,7 +552,7 @@
                                                    presetName:AVAssetExportPresetAppleM4A];
             
             CMTimeScale scale = [track naturalTimeScale];
-
+            
             CMTime startTime = CMTimeMake(leftCropView.cropTime*scale, scale);
             CMTime stopTime = CMTimeMake(rightCropView.cropTime*scale, scale);
             CMTimeRange exportTimeRange = CMTimeRangeFromTimeToTime(startTime, stopTime);
@@ -565,7 +566,7 @@
             NSString *globallyUniqueString = [NSProcessInfo processInfo].globallyUniqueString;
             
             NSString *filePath = [NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.m4a",globallyUniqueString]];
-
+            
             // configure export session  output with all our parameters
             exportSession.outputURL = [NSURL fileURLWithPath:filePath]; // output path
             exportSession.outputFileType = AVFileTypeAppleM4A; // output file type
@@ -588,7 +589,7 @@
                                 NSString *globallyUniqueString = [NSProcessInfo processInfo].globallyUniqueString;
                                 NSString *newFilePath = [NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.m4a",globallyUniqueString]];
                                 NSURL *audioURL = [NSURL fileURLWithPath:newFilePath];
-
+                                
                                 [[NSFileManager defaultManager] moveItemAtURL:exportSession.outputURL toURL:audioURL error:nil];
                                 self.currentAudioFilePath = newFilePath;
                                 
@@ -597,11 +598,11 @@
                                 _audioPlayer = [[AVAudioPlayer alloc] initWithContentsOfURL:audioURL error:nil];
                                 _audioPlayer.delegate = self;
                                 _audioPlayer.meteringEnabled = YES;
-
+                                
                                 CGFloat margin = 30;
-
+                                
                                 [UIView animateWithDuration:0.1 animations:^{
-
+                                    
                                     leftCropView.frame = CGRectMake(CGRectGetMinX(waveformView.frame)-22, CGRectGetMinY(waveformView.frame)-margin, 45, CGRectGetHeight(waveformView.frame)+margin*2);
                                     leftCropView.cropTime = 0;
                                     
@@ -665,22 +666,22 @@
 
 - (void)waveformViewWillLoad:(FDWaveformView *)waveformView
 {
-//    NSLog(@"%@",NSStringFromSelector(_cmd));
+    //    NSLog(@"%@",NSStringFromSelector(_cmd));
 }
 
 - (void)waveformViewDidLoad:(FDWaveformView *)waveformView
 {
-//    NSLog(@"%@",NSStringFromSelector(_cmd));
+    //    NSLog(@"%@",NSStringFromSelector(_cmd));
 }
 
 - (void)waveformDidBeginPanning:(FDWaveformView *)waveformView
 {
-//    NSLog(@"%@",NSStringFromSelector(_cmd));
+    //    NSLog(@"%@",NSStringFromSelector(_cmd));
 }
 
 - (void)waveformDidEndPanning:(FDWaveformView *)waveformView
 {
-//    NSLog(@"%@",NSStringFromSelector(_cmd));
+    //    NSLog(@"%@",NSStringFromSelector(_cmd));
 }
 
 
@@ -737,13 +738,13 @@
 -(void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
 {
     [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext> context) {
-
+        
         leftCropView.center = CGPointMake((leftCropView.cropTime/_audioPlayer.duration)*CGRectGetWidth(middleContainerView.frame),leftCropView.center.y);
         rightCropView.center = CGPointMake((rightCropView.cropTime/_audioPlayer.duration)*CGRectGetWidth(middleContainerView.frame),rightCropView.center.y);
         
-     } completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
-         
-     }];
+    } completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+        
+    }];
 }
 
 @end
